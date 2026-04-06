@@ -2,6 +2,15 @@
 
 An agent plugin that makes LLM knowledge bases **active** — with automatic context loading, retrieval, ingestion, and maintenance.
 
+## Background
+
+Inspired by [@karpathy](https://x.com/karpathy)'s [LLM wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), I set out to make a Wiki management system of my own.
+I found myself telling my agent *how* to manage and update the wiki, which wasn't the point of it. Since I don't edit it, I shouldn't have to tell it how to maintain it.
+This plugin is an attempt at giving the agent the skills and tools it needs to interact with and manage your Wikis on its own.
+
+The plugin is a work in progress; your feedback is welcomed. Use it, pull it, fork it.
+Context is key. LLMs can only act on what they know and I aim to build tools that empower.
+
 ## Architecture
 
 Alexandria uses an **MCP-first** design. All operations are exposed as MCP tools, making it compatible with any platform that supports MCP:
