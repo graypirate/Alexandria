@@ -24,10 +24,9 @@ Manual only — user invokes `/wiki-init`. Not auto-triggered.
 
 The LLM asks the user for:
 
-1. **Wiki location**: Absolute path on disk (e.g., `/Users/dilan/Documents/Wyrd`)
+1. **Wiki location**: Absolute path on disk (e.g., `/Path/To/Wiki`)
 2. **Wiki purpose**: 1-2 sentence description of what the wiki is for
-3. **Focus areas**: List of initial focus folders (e.g., `agents`, `research`, `projects`)
-4. **Naming preference**: How to name the wiki (user provides a name)
+3. **Naming preference**: How to name the wiki (user provides a name)
 
 ### 2. Preferences Validation
 
@@ -36,19 +35,18 @@ LLM confirms the details back to the user before proceeding:
 ```
 I'll create a wiki called "[Name]" at [path] with the following structure:
 - raw/ (source material intake)
+  - assets/ (for images, PDFs, etc.)
 - wiki/ (wiki pages)
-  - [focus-folder-1]/
-  - [focus-folder-2]/
 - index.md
 - log.md
-- CLAUDE.md (Alexandria schema)
+- [AGENT/CLAUDE].md (Alexandria schema)
 
 Ready to proceed? (yes/no)
 ```
 
 ### 3. Scaffold Execution (Tool: `scaffold`)
 
-Tool receives: `{ path: string, name: string, purpose?: string, focusFolders: string[] }`
+Tool receives: `{ path: string, name: string, purpose?: string}`
 
 Tool creates:
 ```
@@ -56,16 +54,14 @@ wiki-root/
 ├── raw/
 │   └── assets/
 ├── wiki/
-│   ├── [focus-folder-1]/
-│   └── [focus-folder-2]/
 ├── index.md
 ├── log.md
-└── CLAUDE.md
+└── [AGENT/CLAUDE].md
 ```
 
 ### 4. Schema Generation (LLM + Tool)
 
-LLM generates the `CLAUDE.md` schema tailored to the user's answers, then writes it via the host agent's file write capability.
+LLM generates the `[AGENT/CLAUDE].md` schema tailored to the user's answers, then writes it via the host agent's file write capability.
 
 Schema includes:
 - Folder structure documentation
@@ -78,7 +74,7 @@ Schema includes:
 ### 5. Initial Files
 
 Tool creates:
-- `index.md` with header and focus area sections (empty)
+- `index.md` with header and "General" section for unorganized pages
 - `log.md` with header and first entry: `## [YYYY-MM-DD] init | Wiki created: [name]`
 
 ### 6. Alexandria Config
@@ -89,11 +85,12 @@ Tool creates `.alexandria.json` in the wiki root:
 {
   "wikiPath": "/absolute/path/to/wiki",
   "wikiName": "Name",
-  "focusFolders": ["agents", "research"],
   "created": "YYYY-MM-DD",
   "version": "1.0"
 }
 ```
+
+Note: Focus folders (like `wiki/agents/`) are created later, as topics emerge and grow deep enough to warrant their own folder. They are lightweight organizational aids, not a rigid structure.
 
 ### 7. Hook Installation (if host supports it)
 
@@ -108,14 +105,14 @@ This step is host-dependent and may need manual configuration.
 ```
 ✓ Wiki "[Name]" initialized at [path]
 ✓ Folder structure created
-✓ Schema written to CLAUDE.md
+✓ Schema written to [AGENT/CLAUDE].md
 ✓ Index and log created
 ✓ Alexandria config written to .alexandria.json
 
 Next steps:
 1. Drop source material into raw/ to start building your wiki
 2. Use /wiki-ingest to process sources into wiki pages
-3. Alexandria will automatically retrieve context at session start
+3. Alexandria will automatically retrieve relevant context in new sessions
 ```
 
 ## Edge Cases

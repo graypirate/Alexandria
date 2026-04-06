@@ -50,7 +50,7 @@ export interface DetectResult {
 export interface ScaffoldConfig {
   wikiPath: string;
   wikiName: string;
-  focusFolders: string[];
+  focusFolders?: string[];
   created: string;
   version: string;
 }

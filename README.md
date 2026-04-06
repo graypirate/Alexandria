@@ -131,14 +131,10 @@ wiki-root/
 ├── .alexandria.json   # Alexandria config (created by scaffold)
 ├── index.md           # Master page index
 ├── log.md            # Activity log
-├── CLAUDE.md         # Wiki schema
+├── CLAUDE.md         # Wiki schema (Claude Code, OpenCode)
+├── AGENT.md          # Wiki schema (Codex) — identical content
 ├── raw/              # Source material (immutable)
 │   └── assets/
 └── wiki/             # Wiki pages
     └── [focus]/      # Focus folders
 ```
-
-## See Also
-
-- [WikiDilan](https://github.com/dilanfein/wiki-dilan) — reference wiki using Alexandria
-- [Context Library](https://github.com/dilanfein/wiki-dilan/wiki/agents/context-library) — full architecture spec

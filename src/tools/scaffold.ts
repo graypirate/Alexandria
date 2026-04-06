@@ -6,14 +6,13 @@ interface ScaffoldParams {
   path: string;
   name: string;
   purpose?: string;
-  focusFolders: string[];
+  focusFolders?: string[];
 }
 
-function createDirectoryStructure(basePath: string, focusFolders: string[]): void {
+function createDirectoryStructure(basePath: string): void {
   const dirs = [
     join(basePath, "raw", "assets"),
     join(basePath, "wiki"),
-    ...focusFolders.map((f) => join(basePath, "wiki", f)),
   ];
 
   for (const dir of dirs) {
@@ -21,29 +20,23 @@ function createDirectoryStructure(basePath: string, focusFolders: string[]): voi
   }
 }
 
-function generateCLAUDEMD(name: string, purpose: string, focusFolders: string[]): string {
-  const focusList =
-    focusFolders.length > 0
-      ? focusFolders.map((f) => `    - ${f}/`).join("\n")
-      : "    - [focus-folder]";
-
+function generateCLAUDEMD(name: string, purpose: string): string {
   return `# ${name} Schema
 
 ## Structure
 
 \`\`\`
 ${name}/
-├── CLAUDE.md              # this file — conventions and workflows
+├── CLAUDE.md              # conventions and workflows (Claude Code, OpenCode)
+├── AGENT.md               # conventions and workflows (Codex) — identical content
 ├── index.md               # master index of all wiki pages
 ├── log.md                 # global activity log
 ├── raw/                   # single intake folder for all source material
 │   └── assets/            # images and non-text files
-└── wiki/                  # all wiki pages live here
-${focusList}
-    └── *.md
+└── wiki/                  # all wiki pages (*.md)
 \`\`\`
 
-Focus folders (like \`wiki/agents/\`) are created when a topic spans what would traditionally be separate "research" and "project" concerns. A topic like agents is both research and a build — it doesn't make sense to split it. New focus folders are created as needed when topics get deep enough.
+Both CLAUDE.md and AGENT.md contain the same schema — the platform uses whichever filename it expects.
 
 ## Conventions
 
@@ -65,7 +58,7 @@ Focus folders (like \`wiki/agents/\`) are created when a topic spans what would 
 
 ### Wiki pages (\`wiki/\`)
 - LLM-generated and LLM-maintained. Human edits are rare and intentional.
-- All wiki pages live under \`wiki/\`, with focus subfolders for deep topics.
+- All wiki pages live under \`wiki/\`.
 - Organized by concept, not by source type.
 - One source can feed multiple wiki pages.
 - Use \`[[wikilinks]]\` for cross-references (Obsidian-compatible).
@@ -83,7 +76,6 @@ Focus folders (like \`wiki/agents/\`) are created when a topic spans what would 
 
 ### Index (\`index.md\`)
 - Single master index at root. No per-folder indexes.
-- Groups pages by focus area, with a General section for ungrouped pages.
 - Format: \`- [[wiki/path/to/page]] — one-line summary\`
 - LLM updates index on every ingest.
 
@@ -115,23 +107,13 @@ Focus folders (like \`wiki/agents/\`) are created when a topic spans what would 
 `;
 }
 
-function generateIndexMD(focusFolders: string[]): string {
-  let content = "# Index\n\n";
+function generateIndexMD(): string {
+  return `# Index
 
-  for (const folder of focusFolders) {
-    const title = folder
-      .split("-")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
-    content += `## ${title}\n\n`;
-    content += `Focus area.\n`;
-    content += `- [[wiki/${folder}/]] — \n\n`;
-  }
+## General
 
-  content += "## General\n\n";
-  content += "Pages that don't fit a specific focus area.\n";
-
-  return content;
+Pages are added here as they are created.
+`;
 }
 
 function generateLogMD(name: string): string {
@@ -160,7 +142,7 @@ export function createScaffoldTool() {
   return {
     name: "scaffold",
     description:
-      "Initialize a new wiki with folder structure, schema files, and Alexandria config. Creates: raw/assets/, wiki/ with focus folders, index.md, log.md, CLAUDE.md, and .alexandria.json. Call this once when setting up a new wiki.",
+      "Initialize a new wiki with folder structure, schema files, and Alexandria config. Creates: raw/assets/, wiki/, index.md, log.md, CLAUDE.md + AGENT.md (identical schema for cross-platform compatibility), and .alexandria.json. Call this once when setting up a new wiki.",
     inputSchema: {
       type: "object",
       properties: {
@@ -176,26 +158,15 @@ export function createScaffoldTool() {
           type: "string",
           description: "Brief description of what the wiki is for. Defaults to 'Personal knowledge base'.",
         },
-        focusFolders: {
-          type: "array",
-          items: { type: "string" },
-          description: "List of focus folder names (e.g., ['agents', 'research']).",
-        },
       },
-      required: ["path", "name", "focusFolders"],
+      required: ["path", "name"],
     },
     execute: async (args: ScaffoldParams) => {
-      const { path, name, focusFolders } = args;
+      const { path, name } = args;
       const purpose = args.purpose || "Personal knowledge base";
 
       if (existsSync(path)) {
-        const files = [
-          "index.md",
-          "log.md",
-          "CLAUDE.md",
-          ".alexandria.json",
-          ...focusFolders.map((f) => `wiki/${f}/`),
-        ];
+        const files = ["index.md", "log.md", "CLAUDE.md", "AGENT.md", ".alexandria.json"];
         const hasWikiContent = files.some((f) => existsSync(join(path, f)));
 
         if (hasWikiContent) {
@@ -214,12 +185,13 @@ export function createScaffoldTool() {
         }
       }
 
-      createDirectoryStructure(path, focusFolders);
+      createDirectoryStructure(path);
 
-      const claudeContent = generateCLAUDEMD(name, purpose, focusFolders);
+      const claudeContent = generateCLAUDEMD(name, purpose);
       writeFileSync(join(path, "CLAUDE.md"), claudeContent, "utf-8");
+      writeFileSync(join(path, "AGENT.md"), claudeContent, "utf-8");
 
-      const indexContent = generateIndexMD(focusFolders);
+      const indexContent = generateIndexMD();
       writeFileSync(join(path, "index.md"), indexContent, "utf-8");
 
       const logContent = generateLogMD(name);
@@ -228,7 +200,6 @@ export function createScaffoldTool() {
       const config: ScaffoldConfig = {
         wikiPath: path,
         wikiName: name,
-        focusFolders,
         created: new Date().toISOString().split("T")[0],
         version: "1.0",
       };
@@ -243,7 +214,6 @@ export function createScaffoldTool() {
                 status: "ok",
                 wikiPath: path,
                 name,
-                focusFolders,
                 created: config.created,
               },
               null,
