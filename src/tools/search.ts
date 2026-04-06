@@ -1,0 +1,212 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import type { SearchResult, SearchIndex, PageContent } from "../types.js";
+import { getWikiPath } from "../utils.js";
+
+interface SearchParams {
+  query: string;
+  wikiPath?: string;
+  limit?: number;
+}
+
+const ALPHA = 0.3;
+
+function loadSearchIndex(wikiPath: string): SearchIndex | null {
+  try {
+    const indexPath = join(wikiPath, "search-index.json");
+    return JSON.parse(readFileSync(indexPath, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter((t) => t.length > 2);
+}
+
+function bm25(
+  query: string,
+  page: PageContent,
+  termIndex: Record<string, Record<string, number>>,
+  avgdl: number
+): number {
+  const terms = tokenize(query);
+  let score = 0;
+  const k1 = 1.5;
+  const b = 0.75;
+
+  for (const term of terms) {
+    const pageFreqs = termIndex[term];
+    if (!pageFreqs) continue;
+
+    const tf = pageFreqs[page.path] || 0;
+    const df = Object.keys(pageFreqs).length;
+    const n = Object.keys(termIndex).length || 1;
+
+    const idf = Math.log((n - df + 0.5) / (df + 0.5) + 1);
+    const docLen = page.body.split(/\s+/).length;
+
+    score +=
+      idf * ((tf * (k1 + 1)) / (tf + k1 * (1 - b + b * docLen / avgdl)));
+  }
+
+  return score;
+}
+
+function getSnippet(content: string, query: string, maxLen = 200): string {
+  const terms = tokenize(query);
+  const sentences = content.split(/[.!?]+/);
+
+  for (const sentence of sentences) {
+    const lower = sentence.toLowerCase();
+    if (terms.some((term) => lower.includes(term))) {
+      return sentence.trim().slice(0, maxLen) + (sentence.length > maxLen ? "..." : "");
+    }
+  }
+
+  return content.slice(0, maxLen) + (content.length > maxLen ? "..." : "");
+}
+
+function search(query: string, index: SearchIndex, limit: number): SearchResult[] {
+  const pages = index.pages;
+
+  if (Object.keys(pages).length === 0) return [];
+
+  const avgdl = Object.values(pages).reduce(
+    (sum, p) => sum + p.body.split(/\s+/).length,
+    0
+  ) / Object.keys(pages).length;
+
+  const results: SearchResult[] = [];
+
+  for (const [path, page] of Object.entries(pages)) {
+    let bm25Score = 0;
+
+    const titleTerms = tokenize(page.title);
+    const headingTerms = page.headings.flatMap(tokenize);
+    const firstParaTerms = tokenize(page.firstParagraph);
+
+    const terms = tokenize(query);
+    const titleMatch = terms.filter((t) => titleTerms.includes(t)).length;
+    const headingMatch = terms.filter((t) => headingTerms.includes(t)).length;
+    const firstParaMatch = terms.filter((t) => firstParaTerms.includes(t)).length;
+
+    const structuralBoost = titleMatch * 10 + headingMatch * 5 + firstParaMatch * 3;
+
+    bm25Score = bm25(query, page, index.termIndex, avgdl) + structuralBoost;
+
+    const prScore = index.pageRank[path] || 0;
+    const finalScore = bm25Score * (1 + ALPHA * prScore);
+
+    if (finalScore > 0) {
+      results.push({
+        path,
+        title: page.title,
+        snippet: getSnippet(page.firstParagraph || page.body, query),
+        score: finalScore,
+        updated: page.updated,
+      });
+    }
+  }
+
+  return results.sort((a, b) => b.score - a.score).slice(0, limit);
+}
+
+function getRecentLogEntries(wikiPath: string, limit = 5): string[] {
+  try {
+    const logPath = join(wikiPath, "log.md");
+    const content = readFileSync(logPath, "utf-8");
+    const entries = content.match(/^## \d{4}-\d{2}-\d{2} .+$/gm) || [];
+    return entries.slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+export function createSearchTool() {
+  return {
+    name: "search",
+    description:
+      "Search wiki pages using BM25 + PageRank hybrid ranking. Returns top results with titles, snippets, and relevance scores. Use this when the user asks about something that might be documented in the wiki — it searches titles, headings, and body text. Call this first before loading specific pages.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "Search query. Include specific terms, names, or phrases to find relevant wiki pages.",
+        },
+        wikiPath: {
+          type: "string",
+          description:
+            "Absolute path to wiki root. Defaults to looking for .alexandria.json in home directory or current working directory.",
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of results to return. Defaults to 10.",
+          default: 10,
+        },
+      },
+      required: ["query"],
+    },
+    execute: async (args: SearchParams) => {
+      const wikiPath = getWikiPath(args.wikiPath);
+      const limit = args.limit || 10;
+
+      const index = loadSearchIndex(wikiPath);
+
+      if (!index) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                results: [],
+                error:
+                  "search-index.json not found. Run index_build or wiki-ingest first to build the search index.",
+              }),
+            },
+          ],
+        };
+      }
+
+      if (!args.query) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                results: [],
+                error: "No query provided",
+              }),
+            },
+          ],
+        };
+      }
+
+      const results = search(args.query, index, limit);
+      const recentLog = getRecentLogEntries(wikiPath);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                results,
+                recentLog,
+                query: args.query,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    },
+  };
+}
