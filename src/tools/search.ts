@@ -1,7 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type { SearchResult, SearchIndex, PageContent } from "../types.js";
 import { getWikiPath } from "../utils.js";
+import { buildIndex } from "./index-build.js";
 
 interface SearchParams {
   query: string;
@@ -25,14 +26,15 @@ function tokenize(text: string): string[] {
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
-    .filter((t) => t.length > 2);
+    .filter((t) => t.length > 1);
 }
 
 function bm25(
   query: string,
   page: PageContent,
   termIndex: Record<string, Record<string, number>>,
-  avgdl: number
+  avgdl: number,
+  totalDocs: number
 ): number {
   const terms = tokenize(query);
   let score = 0;
@@ -45,7 +47,7 @@ function bm25(
 
     const tf = pageFreqs[page.path] || 0;
     const df = Object.keys(pageFreqs).length;
-    const n = Object.keys(termIndex).length || 1;
+    const n = totalDocs || 1;
 
     const idf = Math.log((n - df + 0.5) / (df + 0.5) + 1);
     const docLen = page.body.split(/\s+/).length;
@@ -73,13 +75,14 @@ function getSnippet(content: string, query: string, maxLen = 200): string {
 
 function search(query: string, index: SearchIndex, limit: number): SearchResult[] {
   const pages = index.pages;
+  const totalDocs = Object.keys(pages).length;
 
-  if (Object.keys(pages).length === 0) return [];
+  if (totalDocs === 0) return [];
 
   const avgdl = Object.values(pages).reduce(
     (sum, p) => sum + p.body.split(/\s+/).length,
     0
-  ) / Object.keys(pages).length;
+  ) / totalDocs;
 
   const results: SearchResult[] = [];
 
@@ -97,7 +100,7 @@ function search(query: string, index: SearchIndex, limit: number): SearchResult[
 
     const structuralBoost = titleMatch * 10 + headingMatch * 5 + firstParaMatch * 3;
 
-    bm25Score = bm25(query, page, index.termIndex, avgdl) + structuralBoost;
+    bm25Score = bm25(query, page, index.termIndex, avgdl, totalDocs) + structuralBoost;
 
     const prScore = index.pageRank[path] || 0;
     const finalScore = bm25Score * (1 + ALPHA * prScore);
@@ -120,7 +123,7 @@ function getRecentLogEntries(wikiPath: string, limit = 5): string[] {
   try {
     const logPath = join(wikiPath, "log.md");
     const content = readFileSync(logPath, "utf-8");
-    const entries = content.match(/^## \d{4}-\d{2}-\d{2} .+$/gm) || [];
+    const entries = content.match(/^## \[\d{4}-\d{2}-\d{2}\].+$/gm) || [];
     return entries.slice(0, limit);
   } catch {
     return [];
@@ -157,21 +160,25 @@ export function createSearchTool() {
       const wikiPath = getWikiPath(args.wikiPath);
       const limit = args.limit || 10;
 
-      const index = loadSearchIndex(wikiPath);
+      let index = loadSearchIndex(wikiPath);
 
       if (!index) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                results: [],
-                error:
-                  "search-index.json not found. Run index_build or wiki-ingest first to build the search index.",
-              }),
-            },
-          ],
-        };
+        try {
+          const built = buildIndex(wikiPath);
+          index = built.index;
+        } catch (e) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  results: [],
+                  error: `Could not build search index at ${wikiPath}: ${e instanceof Error ? e.message : String(e)}`,
+                }),
+              },
+            ],
+          };
+        }
       }
 
       if (!args.query) {

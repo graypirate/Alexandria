@@ -1,6 +1,6 @@
 ---
 name: wiki-lint
-description: Check wiki health: orphans, broken links, stale content, contradictions
+description: Run a health check on the user's wiki. Use when the user asks to lint, audit, clean up, check, or fix the wiki — or when they suspect orphans, broken wikilinks, stale pages, missing frontmatter, or contradictions between pages. Combines structural checks (zero token cost) with semantic review (LLM reasoning).
 trigger: manual / scheduled
 tokens: ~variable (structural: ~0, semantic: ~2000-5000 depending on wiki size)
 ---

@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, extname, relative } from "node:path";
-import type { PageContent, IndexBuildResult } from "../types.js";
+import type { PageContent, IndexBuildResult, SearchIndex } from "../types.js";
 import { getWikiPath } from "../utils.js";
 
 interface IndexBuildParams {
@@ -91,7 +91,7 @@ function tokenize(text: string): string[] {
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
-    .filter((t) => t.length > 2);
+    .filter((t) => t.length > 1);
 }
 
 function buildTermIndex(pages: Record<string, PageContent>): Record<string, Record<string, number>> {
@@ -177,8 +177,10 @@ function buildWikilinkGraph(pages: Record<string, PageContent>): Record<string, 
   const pathToPagePath: Record<string, string> = {};
 
   for (const pagePath of Object.keys(pages)) {
-    const filename = pagePath.replace(/^wiki\//, "").replace(/\.md$/, "");
-    pathToPagePath[filename] = pagePath;
+    const noWikiNoMd = pagePath.replace(/^wiki\//, "").replace(/\.md$/, "");
+    const noMd = pagePath.replace(/\.md$/, "");
+    pathToPagePath[noWikiNoMd] = pagePath;
+    pathToPagePath[noMd] = pagePath;
     pathToPagePath[pagePath] = pagePath;
   }
 
@@ -203,7 +205,7 @@ function parseWikiPath(wikiPath: string): PageContent[] {
   const parsedPages: PageContent[] = [];
 
   try {
-    const files = readDirRecursive(wikiDir, wikiDir);
+    const files = readDirRecursive(wikiDir);
 
     for (const file of files) {
       const content = readFileSync(file, "utf-8");
@@ -234,6 +236,29 @@ function parseWikiPath(wikiPath: string): PageContent[] {
   return parsedPages;
 }
 
+export function buildIndex(wikiPath: string): { index: SearchIndex; outputPath: string; pagesIndexed: number } {
+  const outputPath = join(wikiPath, "search-index.json");
+  const pages = parseWikiPath(wikiPath);
+  const pageMap: Record<string, PageContent> = {};
+  for (const page of pages) {
+    pageMap[page.path] = page;
+  }
+
+  const graph = buildWikilinkGraph(pageMap);
+  const pageRank = computePageRank(graph);
+  const termIndex = buildTermIndex(pageMap);
+
+  const index: SearchIndex = {
+    pages: pageMap,
+    pageRank,
+    termIndex,
+    built: new Date().toISOString(),
+  };
+
+  writeFileSync(outputPath, JSON.stringify(index, null, 2));
+  return { index, outputPath, pagesIndexed: pages.length };
+}
+
 export function createIndexBuildTool() {
   return {
     name: "index_build",
@@ -251,30 +276,11 @@ export function createIndexBuildTool() {
     },
     execute: async (args: IndexBuildParams) => {
       const wikiPath = getWikiPath(args.wikiPath);
-      const outputPath = join(wikiPath, "search-index.json");
-
-      const pages = parseWikiPath(wikiPath);
-      const pageMap: Record<string, PageContent> = {};
-      for (const page of pages) {
-        pageMap[page.path] = page;
-      }
-
-      const graph = buildWikilinkGraph(pageMap);
-      const pageRank = computePageRank(graph);
-      const termIndex = buildTermIndex(pageMap);
-
-      const index = {
-        pages: pageMap,
-        pageRank,
-        termIndex,
-        built: new Date().toISOString(),
-      };
-
-      writeFileSync(outputPath, JSON.stringify(index, null, 2));
+      const { outputPath, pagesIndexed } = buildIndex(wikiPath);
 
       const result: IndexBuildResult = {
         status: "ok",
-        pagesIndexed: pages.length,
+        pagesIndexed,
         output: outputPath,
       };
 

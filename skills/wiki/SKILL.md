@@ -1,6 +1,6 @@
 ---
 name: wiki
-description: Retrieve relevant context from the wiki based on the current conversation
+description: Search the user's wiki for relevant context. Use whenever the conversation references past work, named projects, prior decisions, ongoing ideas, or any topic the user treats as already-known. Call BEFORE answering from conversation memory. Also use mid-session when the topic shifts into wiki-relevant territory.
 trigger: auto (first message of session) / on-demand
 tokens: ~3000 (auto-triggered search + select page loads)
 ---

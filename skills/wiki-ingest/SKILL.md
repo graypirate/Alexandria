@@ -1,6 +1,6 @@
 ---
 name: wiki-ingest
-description: Process raw source files into wiki pages with discussion and filing
+description: Process new files in the wiki's raw/ folder into wiki pages. Use when the user says they've added sources, dropped files, or wants to ingest material. Reads each new raw source, discusses takeaways, files into appropriate wiki pages, updates the index, rebuilds the search index, and logs the action.
 trigger: manual
 tokens: ~variable (per source: read + synthesize + file writes)
 ---

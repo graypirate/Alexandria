@@ -1,6 +1,6 @@
 ---
 name: wiki-init
-description: Initialize a new wiki with folder structure, schema, and hooks
+description: Initialize a brand-new wiki for the user. Use ONLY when the user explicitly says they want to create, set up, or start a new wiki — never auto-trigger. Asks for path, name, and purpose, then scaffolds folder structure, schema, config, and an empty search index.
 trigger: manual only
 tokens: ~500 (gathering preferences) + variable (scaffold execution)
 ---

@@ -54,7 +54,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   try {
-    const result = await tool.execute(args || {});
+    const result = await (tool.execute as (a: any) => any)(args || {});
     return result;
   } catch (error) {
     return {

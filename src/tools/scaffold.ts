@@ -1,6 +1,8 @@
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { homedir } from "node:os";
 import type { ScaffoldConfig } from "../types.js";
+import { buildIndex } from "./index-build.js";
 
 interface ScaffoldParams {
   path: string;
@@ -203,7 +205,15 @@ export function createScaffoldTool() {
         created: new Date().toISOString().split("T")[0],
         version: "1.0",
       };
-      writeFileSync(join(path, ".alexandria.json"), generateAlexandraConfig(config), "utf-8");
+      const configJson = generateAlexandraConfig(config);
+      writeFileSync(join(path, ".alexandria.json"), configJson, "utf-8");
+      writeFileSync(join(homedir(), ".alexandria.json"), configJson, "utf-8");
+
+      try {
+        buildIndex(path);
+      } catch {
+        // wiki/ is empty on first scaffold; index build is best-effort
+      }
 
       return {
         content: [
