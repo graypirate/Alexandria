@@ -1,80 +1,55 @@
 ---
 name: session-end
 description: Extracts durable knowledge from conversation at session close
-timing: on session end / manual trigger
-tokens: ~variable (conversation length, typically 2000-5000)
+timing: on session end
 ---
 
 # Hook: Session End — Conversation Extraction
 
-Fires when a session closes. Prompts the LLM to review the conversation and file durable knowledge into the wiki.
-
-## When This Fires
-
-- **Session close**: When the user ends a session or the host agent shuts down
-- **Manual trigger**: User invokes `/extract` or similar command mid-session
-
-## What It Prompts
+Fires when the session is closing. The fenced block below is what the hook injects, prompting the agent to extract durable knowledge from the conversation and file it into the wiki before the context is lost. Length is acceptable here — this fires once per session, not per turn.
 
 ```
-## Session End — Knowledge Extraction
+# Alexandria — Session End
 
-Review the conversation above and extract durable knowledge that should be
-filed into the wiki:
+The conversation above is about to be lost. Preserve the work that mattered. This is your one chance to file what surfaced in this session into the wiki so future sessions can build on it.
 
-1. **Decisions made** — conclusions, choices, or commitments
-2. **New ideas** — concepts, insights, or approaches that emerged
-3. **Changed directions** — pivots, corrections, or abandoned plans
-4. **New connections** — links between existing wiki pages that weren't explicit before
-5. **Facts established** — information that should be referenceable
+## What to extract
 
-Ignore:
-- False starts and abandoned tangents
-- Clarifying questions that don't lead anywhere
-- Back-and-forth that didn't converge
-- User preferences that are personal and not project-relevant
+Walk back through the full conversation and identify durable signal:
 
-For each item to file:
-1. Search the wiki to find where it belongs
-2. Update the existing page OR create a new page if no fit exists
-3. Use [[wikilinks]] to connect to related pages
-4. Update frontmatter: set `updated` to today's date
+1. **Decisions reached** — conclusions, choices, commitments, design picks, things you and the user converged on.
+2. **Ideas that landed** — concepts, insights, framings, or approaches that emerged and held up under discussion.
+3. **Design directions** — architectural moves, plans, pivots, or new approaches to existing problems.
+4. **Novel connections** — links between existing wiki pages, projects, or concepts that weren't explicit before.
+5. **Corrections** — places where prior wiki content was wrong, outdated, or superseded by what was discussed.
+6. **Established facts** — concrete information about projects, systems, or domains that should be referenceable later.
 
-After filing:
-- Rebuild the search index (run index-build script)
-- Log the extraction to log.md: ## [YYYY-MM-DD] extract | [N] items filed
+## What to drop
+
+- False starts, abandoned tangents, ideas that got rejected.
+- Clarifying back-and-forth that didn't converge.
+- Meta-conversation about tools, the wiki itself, or the agent.
+- Transient context that won't matter outside this session.
+- Personal facts about the user (preferences, traits, mood) — those belong in the built-in memory layer, NOT the wiki. The wiki is for ideas, not for the user.
+
+Quality bar: will this matter in 3 months? If no, drop it. Be selective. A small number of well-placed updates beats a flood of mediocre ones.
+
+## How to integrate it
+
+For each item you decide to keep:
+
+1. **Find the right home.** Use the `search` MCP tool to locate existing pages on the topic. Read the top 2–3 hits before deciding where the new content goes.
+2. **Prefer updates over new pages.** If an existing page covers the topic, update it in place. Integrate the new content into the existing structure — don't bolt on a section labeled "from session X". Rewrite for coherence.
+3. **Only create new pages when nothing fits.** Duplicate or near-duplicate pages are worse than no page at all. If you create one, it must have proper frontmatter (`title`, `created`, `updated`, `tags`, `sources`) and a clear distinct topic.
+4. **Connect everything.** Every new or updated page must link to at least one related page via `[[wikilinks]]`. Isolated pages are dead pages. Look for opportunities to add links to *other* pages pointing back at what you just changed.
+5. **Bump frontmatter.** Set `updated:` to today's date on every page you touch.
+6. **Be precise.** File facts and decisions in the user's voice. Don't editorialize, don't soften, don't pad.
+
+## After filing
+
+1. Append one line to `log.md` in this format: `## [YYYY-MM-DD] extract | brief summary of what was filed` (newest first).
+2. Call the `index_build` MCP tool to rebuild the search index so the new content is searchable in the next session.
+3. Report back to the user with a short summary of what was filed and where (use `[[wikilinks]]` so they can navigate).
+
+If nothing in the conversation is worth filing, say so explicitly and skip the log entry. Don't fabricate work.
 ```
-
-## Extraction Rules
-
-1. **Be selective** — not everything is worth filing. Ask: will this matter in 3 months?
-2. **Be precise** — file facts, not interpretations. Let the user correct if needed.
-3. **Be connected** — every new page should link to at least 2 existing pages
-4. **Update, don't duplicate** — if a page exists, update it rather than creating a near-duplicate
-
-## Post-Extraction Actions
-
-After the LLM completes extraction:
-
-1. **Run `index-build.ts`** — rebuild search index with new/updated pages
-2. **Append to `log.md`** — record the extraction session
-
-## Edge Cases
-
-- **No durable knowledge**: Report "No durable knowledge extracted" and skip log entry
-- **Wiki not configured**: Skip extraction silently, log nothing
-- **Extraction interrupted**: Wiki remains in pre-extraction state; no partial writes
-- **Conflicting information**: Update existing pages with corrections, don't create contradictions
-
-## Batch Sessions
-
-If the session spans multiple days of work on the same topic:
-- Treat it as one conversation for extraction purposes
-- File all durable knowledge at the end, not per-day
-
-## Notes
-
-This hook replaces what would otherwise be manual filing. The goal is zero-effort knowledge capture — the user should not have to remember to file things. Session close is the natural trigger because:
-- The conversation is fresh
-- The user is done with that context
-- Filing won't interrupt active work

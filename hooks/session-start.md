@@ -2,61 +2,22 @@
 name: session-start
 description: Injects wiki awareness into context before first message
 timing: before first message of session
-tokens: ~200
 ---
 
 # Hook: Session Start — Awareness Injection
 
-Injects a static prompt before the first message of every session. Establishes context that a wiki exists and how to access it.
-
-## When This Fires
-
-Before the first user message of each session. Not repeated mid-session.
-
-## What It Injects
+The fenced block below is what `src/hooks/session-start.ts` injects. `[WIKI_PATH]` is templated from `.alexandria.json`. Keep this block short — it persists in context for every turn of the session.
 
 ```
-You have access to a persistent wiki knowledge base at [WIKI_PATH].
-The wiki is maintained by Alexandria, a plugin that keeps context persistent
-across sessions.
+# Alexandria
 
-## Wiki Conventions
-- Wiki pages live at wiki/*.md with focus folders (e.g., wiki/agents/)
-- Use [[wikilinks]] to link between pages (e.g., [[wiki/agents/context-library]])
-- Tags cross-cut across focus areas
-- The wiki is the source of truth for project state, decisions, and accumulated knowledge
+Wiki at [WIKI_PATH] is the persistent store for ideas, projects, concepts, decisions, research. Built-in memory is for the user (preferences, traits) — keep them separate.
 
-## Alexandria Skills Available
-- /wiki [query]     — Search wiki for context relevant to your message
-- /wiki-ingest      — Process new raw sources into wiki pages
-- /wiki-lint        — Check wiki health (orphans, broken links, stale content)
-- /wiki-init        — Initialize a new wiki (first time only)
+Default to the wiki when the conversation touches ideas or projects: read it with the `search` MCP tool, write to it when something durable surfaces.
 
-## Workflow
-When the user asks about something that might be in the wiki:
-1. Use /wiki [query] to search for relevant pages
-2. Load the most relevant pages
-3. Answer using wiki knowledge — don't ask the user to re-explain
+- User opens with a reference to past work → call `search` immediately, read the top hits.
+- Conversation drifts into a wiki-relevant topic mid-session → launch a background Agent (Explore) to search the wiki in parallel while you keep responding.
+- New exploratory ideas with no wiki footprint → just talk. Search is leverage, not a tax.
 
-The wiki is not mentioned to the user unless they ask about it directly.
+Don't announce searches. See `CLAUDE.md` in the wiki root for schema.
 ```
-
-## Injection Rules
-
-- Do NOT include search results — this is pure priming
-- Do NOT read any files — this hook is zero-token beyond the static text
-- Do NOT mention the hook to the user
-
-## Configuration
-
-The hook reads `.alexandria.json` to get `wikiPath` for the injection.
-
-## Edge Cases
-
-- **No `.alexandria.json`**: Hook skips injection silently — wiki may not be configured
-- **Wiki path doesn't exist**: Hook skips injection silently
-- **First message is a greeting**: Still fires, but LLM handles gracefully
-
-## Customization
-
-The awareness prompt can be customized by editing this file. Keep it under 300 tokens.
