@@ -44,7 +44,7 @@ I'll create a wiki called "[Name]" at [path] with the following structure:
 Ready to proceed? (yes/no)
 ```
 
-### 3. Scaffold Execution (Tool: `scaffold`)
+### 3. Scaffold Execution (Tool: `mcp__alexandria__scaffold`)
 
 Tool receives: `{ path: string, name: string, purpose?: string}`
 
@@ -96,8 +96,8 @@ Note: Focus folders (like `wiki/agents/`) are created later, as topics emerge an
 ### 7. Awareness and Extraction
 
 - Session-start awareness comes from Alexandria's MCP `instructions` field.
-- If the host does not surface those instructions reliably, add the template from `templates/AGENTS.md.example` to the project.
-- End-of-session filing is available manually through the `extract_session` MCP tool.
+- If the host does not surface those instructions reliably, add explicit project instructions manually in `AGENTS.md`.
+- End-of-session filing is available manually through the `mcp__alexandria__extract_session` MCP tool.
 
 ## Output Format
 

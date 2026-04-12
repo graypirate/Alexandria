@@ -1,8 +1,8 @@
 ---
 name: wiki-ingest
-description: Process new files in the wiki's raw/ folder into wiki pages. Use when the user says they've added sources, dropped files, or wants to ingest material. Reads each new raw source, discusses takeaways, files into appropriate wiki pages, updates the index, rebuilds the search index, and logs the action.
+description: "Process new files in the wiki's raw/ folder into wiki pages. Use when the user says they've added sources, dropped files, or wants to ingest material. Reads each new raw source, discusses takeaways, files into appropriate wiki pages, updates the index, rebuilds the search index, and logs the action."
 trigger: manual
-tokens: ~variable (per source: read + synthesize + file writes)
+tokens: "~variable (per source: read + synthesize + file writes)"
 ---
 
 # Skill: Wiki Ingest
@@ -15,7 +15,7 @@ Manual — user invokes `/wiki-ingest` after dropping files into `raw/`.
 
 ## Flow
 
-### 1. New File Detection (Tool: `detect_new`)
+### 1. New File Detection (Tool: `mcp__alexandria__detect_new`)
 
 ```
 Input: { wikiPath?: string }
@@ -85,7 +85,7 @@ LLM updates `index.md`:
 - Updates summaries for modified pages
 - Maintains the `- [[wiki/path]] — summary` format
 
-### 6. Search Index Rebuild (Tool: `index_build`)
+### 6. Search Index Rebuild (Tool: `mcp__alexandria__index_build`)
 
 ```
 Input: { wikiPath?: string }
@@ -136,4 +136,4 @@ LLM appends to `log.md`:
 - One source can feed multiple wiki pages (e.g., one article about context + another about agents)
 - Tags are the primary cross-cutting mechanism — use them liberally
 - The LLM should proactively link to related pages, not just create isolated pages
-- If the ingest surfaced durable session-level conclusions beyond the source material itself, use `extract_session` later to preserve them cleanly.
+- If the ingest surfaced durable session-level conclusions beyond the source material itself, use `mcp__alexandria__extract_session` later to preserve them cleanly.

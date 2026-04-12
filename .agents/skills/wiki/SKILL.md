@@ -16,7 +16,7 @@ Retrieves wiki pages relevant to the current message using BM25 + PageRank searc
 
 ## Flow
 
-### 1. Search (Tool: `search`)
+### 1. Search (Tool: `mcp__alexandria__search`)
 
 ```
 Input: { query: string, wikiPath?: string, limit?: number }
@@ -24,7 +24,7 @@ Output: { results: [{ path, title, snippet, score }], recentLog: string[] }
 ```
 
 1. Parse the user's message as a query string
-2. Call the `search` MCP tool with the query
+2. Call the `mcp__alexandria__search` MCP tool with the query
 3. Tool returns ranked results: `[{ path, title, snippet, score }]`
 4. Also returns last 5 log entries for recency context
 

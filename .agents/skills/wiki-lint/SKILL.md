@@ -1,8 +1,8 @@
 ---
 name: wiki-lint
-description: Run a health check on the user's wiki. Use when the user asks to lint, audit, clean up, check, or fix the wiki — or when they suspect orphans, broken wikilinks, stale pages, missing frontmatter, or contradictions between pages. Combines structural checks (zero token cost) with semantic review (LLM reasoning).
-trigger: manual / scheduled
-tokens: ~variable (structural: ~0, semantic: ~2000-5000 depending on wiki size)
+description: "Run a health check on the user's wiki. Use when the user asks to lint, audit, clean up, check, or fix the wiki — or when they suspect orphans, broken wikilinks, stale pages, missing frontmatter, or contradictions between pages. Combines structural checks (zero token cost) with semantic review (LLM reasoning)."
+trigger: "manual / scheduled"
+tokens: "~variable (structural: ~0, semantic: ~2000-5000 depending on wiki size)"
 ---
 
 # Skill: Wiki Lint
@@ -16,7 +16,7 @@ Comprehensive health check for the wiki. Catches structural issues via script an
 
 ## Flow
 
-### Phase 1: Structural Checks (Tool: `lint_structural`)
+### Phase 1: Structural Checks (Tool: `mcp__alexandria__lint_structural`)
 
 Zero token cost. Runs pure logic on the file system.
 
@@ -112,7 +112,7 @@ LLM assembles findings into a readable report:
 - Create new pages for concept gaps
 - Add `[needs-verification]` tags to unsubstantiated claims
 
-### Phase 5: Index Rebuild (Tool: `index_build`)
+### Phase 5: Index Rebuild (Tool: `mcp__alexandria__index_build`)
 
 After any page modifications, rebuild the search index.
 
@@ -131,7 +131,7 @@ LLM appends to `log.md`:
 
 [Full report as above]
 
-Run /wiki-lint-apply to apply automatic fixes, or review manually.
+Apply the approved fixes directly, then rebuild the index.
 ```
 
 ## Edge Cases
@@ -155,4 +155,4 @@ Via `.alexandria.json`:
 }
 ```
 
-If linting surfaces durable design decisions or corrections worth preserving beyond the report itself, file them into the wiki and rebuild the index. Use `extract_session` separately when the goal is to preserve the broader conversation, not just the lint findings.
+If linting surfaces durable design decisions or corrections worth preserving beyond the report itself, file them into the wiki and rebuild the index. Use `mcp__alexandria__extract_session` separately when the goal is to preserve the broader conversation, not just the lint findings.
