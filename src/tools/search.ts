@@ -134,7 +134,7 @@ export function createSearchTool() {
   return {
     name: "search",
     description:
-      "Search wiki pages using BM25 + PageRank hybrid ranking. Returns top results with titles, snippets, and relevance scores. Use this when the user asks about something that might be documented in the wiki — it searches titles, headings, and body text. Call this first before loading specific pages.",
+      "Search the user's persistent wiki knowledge base. Call this BEFORE answering any question that references past work, named projects, prior decisions, ongoing ideas, or topics the user treats as already-known. The wiki is the source of truth across sessions; conversation memory is not — do not answer from memory when the wiki might know. Returns ranked pages (BM25 + PageRank) with snippets plus the most recent activity log entries. Read the top 2-4 hits in full before responding. Do not announce that you searched — integrate the knowledge naturally into your answer.",
     inputSchema: {
       type: "object",
       properties: {

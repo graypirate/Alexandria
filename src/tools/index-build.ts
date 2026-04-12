@@ -263,7 +263,7 @@ export function createIndexBuildTool() {
   return {
     name: "index_build",
     description:
-      "Rebuild the search index after wiki changes. Parses all wiki pages, builds the wikilink graph, computes PageRank, and creates a BM25 term index. Run this after wiki-ingest or any bulk wiki changes.",
+      "Rebuild the wiki's search index. Call this AFTER any operation that creates, modifies, or deletes wiki pages — including wiki-ingest, wiki-lint fixes, or direct page edits. The search tool depends on this index; stale indexes return stale results. Parses all wiki pages, rebuilds the wikilink graph, recomputes PageRank, and writes a fresh BM25 term index to search-index.json at the wiki root. Cheap to run; prefer running it once at the end of a batch of edits over skipping it.",
     inputSchema: {
       type: "object",
       properties: {

@@ -1,7 +1,7 @@
 {
   "name": "alexandria",
   "version": "1.0.0",
-  "description": "Active context management plugin for LLM coding agents",
+  "description": "Active context management MCP server with portable skills for LLM agents",
   "type": "module",
   "scripts": {
     "build": "tsc",

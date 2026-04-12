@@ -154,3 +154,5 @@ Via `.alexandria.json`:
   }
 }
 ```
+
+If linting surfaces durable design decisions or corrections worth preserving beyond the report itself, file them into the wiki and rebuild the index. Use `extract_session` separately when the goal is to preserve the broader conversation, not just the lint findings.

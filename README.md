@@ -1,44 +1,43 @@
 # Alexandria
 
-An agent plugin that makes LLM knowledge bases **active** — with automatic context loading, retrieval, ingestion, and maintenance.
+An MCP server plus portable `SKILL.md` workflows for making LLM knowledge bases active: searchable, maintainable, and reusable across sessions.
 
 ## Background
 
-Inspired by [@karpathy](https://x.com/karpathy)'s [LLM wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), I set out to make a Wiki management system of my own.
-I found myself telling my agent *how* to manage and update the wiki, which wasn't the point of it. Since I don't edit it, I shouldn't have to tell it how to maintain it.
-This plugin is an attempt at giving the agent the skills and tools it needs to interact with and manage your Wikis on its own.
+Inspired by [@karpathy](https://x.com/karpathy)'s [LLM wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), Alexandria exists to stop making the human micromanage the wiki. The wiki should be a durable artifact the agent can read, update, lint, and extend on its own.
 
-The plugin is a work in progress; your feedback is welcomed. Use it, pull it, fork it.
-Context is key. LLMs can only act on what they know and I aim to build tools that empower.
+The current design is intentionally simple:
 
-## Architecture
+- MCP tools do the filesystem-heavy work.
+- Portable skills in `.agents/skills/` tell the host agent when to use those tools.
+- Prompt assets in `prompts/` provide default awareness and manual end-of-session extraction without relying on a host-specific plugin system.
 
-Alexandria uses an **MCP-first** design. All operations are exposed as MCP tools, making it compatible with any platform that supports MCP:
+## Layout
 
-```
+```text
 Alexandria/
-├── src/                       # MCP server implementation
-│   ├── index.ts              # MCP server entry (stdio transport)
-│   ├── hooks/
-│   │   └── session-start.ts  # SessionStart hook script (Claude Code)
-│   ├── tools/
-│   │   ├── search.ts         # → search tool
-│   │   ├── index-build.ts    # → index_build tool (+ buildIndex helper)
-│   │   ├── lint-structural.ts # → lint_structural tool
-│   │   ├── scaffold.ts       # → scaffold tool
-│   │   └── detect-new.ts     # → detect_new tool
-│   ├── types.ts
-│   └── utils.ts
-├── skills/                    # Agent-facing skill definitions (Claude Code)
-│   ├── wiki/SKILL.md         # Context retrieval
-│   ├── wiki-init/SKILL.md    # Wiki initialization
-│   ├── wiki-ingest/SKILL.md  # Source processing
-│   └── wiki-lint/SKILL.md    # Health checks
-├── hooks/                     # Hook prompt sources (read by src/hooks/*)
+├── .agents/
+│   └── skills/
+│       ├── wiki/SKILL.md
+│       ├── wiki-init/SKILL.md
+│       ├── wiki-ingest/SKILL.md
+│       └── wiki-lint/SKILL.md
+├── prompts/
 │   ├── session-start.md
 │   └── session-end.md
-├── .claude-plugin/plugin.json # Claude Code plugin manifest
-├── .codex-plugin/plugin.json  # Codex manifest
+├── src/
+│   ├── index.ts
+│   ├── tools/
+│   │   ├── search.ts
+│   │   ├── index-build.ts
+│   │   ├── lint-structural.ts
+│   │   ├── scaffold.ts
+│   │   ├── detect-new.ts
+│   │   └── extract-session.ts
+│   ├── types.ts
+│   └── utils.ts
+├── templates/
+│   └── AGENTS.md.example
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -49,27 +48,19 @@ Alexandria/
 | Tool | Description |
 |------|-------------|
 | `search` | BM25 + PageRank search across wiki pages |
-| `index_build` | Rebuild search index after wiki changes |
-| `lint_structural` | Check for orphans, broken links, stale pages |
-| `scaffold` | Create new wiki structure |
-| `detect_new` | Find unprocessed files in raw/ |
+| `index_build` | Rebuild the search index after wiki changes |
+| `lint_structural` | Find orphans, broken links, stale pages, and index gaps |
+| `scaffold` | Create a new wiki root and schema |
+| `detect_new` | Find files in `raw/` that have not been filed yet |
+| `extract_session` | Return the end-of-session filing prompt for manual extraction |
 
 ## Skills vs Tools
 
-**Skills** (`SKILL.md`) tell the LLM *when* and *how* to use wiki operations. **MCP tools** are the actual operations the LLM calls.
+`SKILL.md` files describe when and how the host should use Alexandria. MCP tools perform the operations.
 
-- Skill triggers on specific user queries
-- Skill body provides guidance and context
-- LLM calls MCP tool to execute operation
-- LLM synthesizes result
-
-## Platform Support
-
-| Platform    | MCP server | Skills | Hooks | Notes |
-|-------------|:----------:|:------:|:-----:|-------|
-| Claude Code | ✓ | ✓ | ✓ | Full plugin via `.claude-plugin/plugin.json` |
-| Codex CLI   | ✓ | — | — | MCP only via `~/.codex/config.toml`. Copy `hooks/session-start.md` into `AGENTS.md` for awareness. |
-| OpenCode    | ✓ | — | — | MCP only via `opencode.json`. Skills/hooks would need a real OpenCode plugin file (TS export). |
+- Skills live in `.agents/skills/` so they can be copied or symlinked into whatever skill search path your host uses.
+- Tools are exposed through MCP and are host-agnostic.
+- The MCP server also exposes startup awareness through the MCP `instructions` field.
 
 ## Setup
 
@@ -80,26 +71,21 @@ cd /path/to/Alexandria
 bun install
 ```
 
-### 2. Install for your agent
+### 2. Register the MCP server
 
-#### Claude Code
+Run it directly:
 
-Full plugin support — skills, hooks, and the MCP server are all wired by `.claude-plugin/plugin.json`. From inside Claude Code:
-
-```
-/plugin marketplace add /path/to/Alexandria
-/plugin install alexandria@alexandria
+```bash
+bun src/index.ts
 ```
 
-#### Codex CLI
-
-Codex supports the MCP server but has no plugin concept for skills or hooks. Register the server with:
+Or register it with your host, for example in Codex:
 
 ```bash
 codex mcp add alexandria -- bun /path/to/Alexandria/src/index.ts
 ```
 
-Or edit `~/.codex/config.toml` directly:
+Equivalent config:
 
 ```toml
 [mcp_servers.alexandria]
@@ -107,77 +93,92 @@ command = "bun"
 args = ["/path/to/Alexandria/src/index.ts"]
 ```
 
-For session-start awareness without hooks, copy the prompt from `hooks/session-start.md` into your project's `AGENTS.md` (Codex auto-loads it).
+Any MCP client that respects the `instructions` field will receive Alexandria's session-start guidance on connect.
 
-#### OpenCode
+### 3. Install the skills
 
-OpenCode also supports the MCP server but uses a different plugin model (TS files in `.opencode/plugins/` exporting a function — see [opencode.ai/docs/plugins](https://opencode.ai/docs/plugins/)). For the MCP server only, add to `opencode.json`:
+The portable skill source of truth is `.agents/skills/`.
 
-```json
-{
-  "mcp": {
-    "alexandria": {
-      "type": "local",
-      "command": ["bun", "/path/to/Alexandria/src/index.ts"]
-    }
-  }
-}
+For a global install in hosts that read `~/.agents/skills`:
+
+```bash
+mkdir -p ~/.agents/skills
+ln -s /path/to/Alexandria/.agents/skills/wiki ~/.agents/skills/wiki
+ln -s /path/to/Alexandria/.agents/skills/wiki-init ~/.agents/skills/wiki-init
+ln -s /path/to/Alexandria/.agents/skills/wiki-ingest ~/.agents/skills/wiki-ingest
+ln -s /path/to/Alexandria/.agents/skills/wiki-lint ~/.agents/skills/wiki-lint
 ```
 
-For session-start awareness, copy the prompt from `hooks/session-start.md` into your project's `AGENTS.md`.
+If your host prefers a different skill directory, copy the same folders there. The format is plain `SKILL.md`, not a plugin package.
 
-### 3. Initialize a wiki (first time only)
+### 4. Add project awareness where needed
 
-```
-/wiki-init
-```
+If your host does not surface MCP `instructions` reliably, copy [templates/AGENTS.md.example](templates/AGENTS.md.example) into the target project's `AGENTS.md` and replace `<WIKI_PATH>`.
 
-The agent will ask for wiki location, name, and purpose, then scaffold the folder structure, schema, config (`.alexandria.json` written to both the wiki root and `~/.alexandria.json`), and an initial empty search index.
+### 5. Initialize a wiki
+
+Invoke `/wiki-init` or otherwise trigger the `wiki-init` skill. Alexandria scaffolds:
+
+- `raw/` and `raw/assets/`
+- `wiki/`
+- `index.md`
+- `log.md`
+- `CLAUDE.md`
+- `AGENTS.md`
+- `.alexandria.json`
+- `search-index.json`
+
+## Manual Session Extraction
+
+There is no plugin-only session-end hook anymore. The portable write-side path is the `extract_session` MCP tool.
+
+Use it when:
+
+- the user asks to preserve what happened in the conversation
+- you are wrapping a long session and want to file durable knowledge
+- your host has no real end-of-session automation
+
+`extract_session` returns Alexandria's filing prompt. Apply it, update the relevant wiki pages, append to `log.md` if needed, then call `index_build`.
 
 ## Search Index Design
 
-Alexandria uses a precomputed `search-index.json` that lives at the wiki root. It is **not** the same as `index.md` — the latter is a human/agent-readable table of contents, the former is a data structure that the `search` tool consumes and is never shown to the agent.
+Alexandria stores a precomputed `search-index.json` at the wiki root. This is separate from `index.md`:
 
-The index holds:
+- `index.md` is the human-readable table of contents.
+- `search-index.json` is the cached data structure used by `search`.
 
-- **`pages`** — `{ path → { title, headings, firstParagraph, body, updated, links } }`. One entry per wiki page, with the structural fields the BM25 ranker needs.
-- **`termIndex`** — inverted index `{ term → { path → frequency } }`. Lets BM25 score in O(query terms) instead of O(all pages × all words).
-- **`pageRank`** — `{ path → score }`, precomputed from the wikilink graph. PageRank is iterative, so it's cached.
+The index contains:
 
-`search` returns ranked results with snippets via `final_score = BM25(query, page) × (1 + α × PageRank(page))`, with structural weighting (title × 10, headings × 5, first paragraph × 3, body × 1).
+- `pages`: `{ path -> { title, headings, firstParagraph, body, updated, links } }`
+- `termIndex`: inverted index `{ term -> { path -> frequency } }`
+- `pageRank`: precomputed rank scores from the wikilink graph
 
-**Index lifecycle:**
+Ranking is `BM25(query, page) * (1 + alpha * PageRank(page))` with structural boosts:
 
-- `scaffold` builds an empty index on `wiki-init`.
-- `wiki-ingest` and `wiki-lint` should call `index_build` after writing pages.
-- `search` lazy-builds the index if it's missing on first call, so day-one queries work even without an explicit build step.
+- title × 10
+- headings × 5
+- first paragraph × 3
+- body × 1
 
-**Why a JSON cache instead of scanning on every query?** The agent doesn't pay any tokens to read the cache — the script reads it directly. Without the cache, every `search` call would walk the entire wiki, parse frontmatter, tokenize, and recompute PageRank. At hundreds of pages that's seconds of I/O per query and defeats the point.
+Lifecycle:
 
-**Future migration paths** (deferred until the JSON cache stops fitting):
+- `scaffold` creates the initial empty index
+- `search` lazy-builds it if missing
+- `index_build` should run after any wiki writes
 
-- **SQLite + FTS5** via `bun:sqlite`. BM25 built-in, incremental row updates instead of full rebuilds, PageRank stored as a column. Scoring code ports directly; only the storage layer changes. The path if retrieval remains Alexandria's value prop.
-- **Agent grep**. Drop custom retrieval entirely, expose `wiki_list` / `wiki_read`, and let the host agent use its own Grep/Glob tools with a SKILL.md that directs it. No index, no cache, no staleness. The path if the lifecycle (hooks, ingest, lint, session continuity) is the real value prop and search is incidental.
-
-## Running the MCP Server Directly
-
-```bash
-bun src/index.ts
-```
-
-The server uses stdio transport, so it works with any MCP client.
+The cache exists so the agent does not re-scan and re-tokenize the entire wiki on every query.
 
 ## Wiki Structure
 
-```
+```text
 wiki-root/
-├── .alexandria.json   # Alexandria config (created by scaffold)
-├── index.md           # Master page index
-├── log.md            # Activity log
-├── CLAUDE.md         # Wiki schema (Claude Code, OpenCode)
-├── AGENT.md          # Wiki schema (Codex) — identical content
-├── raw/              # Source material (immutable)
+├── .alexandria.json
+├── index.md
+├── log.md
+├── CLAUDE.md
+├── AGENTS.md
+├── raw/
 │   └── assets/
-└── wiki/             # Wiki pages
-    └── [focus]/      # Focus folders
+└── wiki/
+    └── [focus]/
 ```

@@ -30,7 +30,7 @@ function generateCLAUDEMD(name: string, purpose: string): string {
 \`\`\`
 ${name}/
 ├── CLAUDE.md              # conventions and workflows (Claude Code, OpenCode)
-├── AGENT.md               # conventions and workflows (Codex) — identical content
+├── AGENTS.md              # conventions and workflows (Codex) — identical content
 ├── index.md               # master index of all wiki pages
 ├── log.md                 # global activity log
 ├── raw/                   # single intake folder for all source material
@@ -38,7 +38,11 @@ ${name}/
 └── wiki/                  # all wiki pages (*.md)
 \`\`\`
 
-Both CLAUDE.md and AGENT.md contain the same schema — the platform uses whichever filename it expects.
+Both CLAUDE.md and AGENTS.md contain the same schema — the platform uses whichever filename it expects.
+
+## Purpose
+
+${purpose}
 
 ## Conventions
 
@@ -144,7 +148,7 @@ export function createScaffoldTool() {
   return {
     name: "scaffold",
     description:
-      "Initialize a new wiki with folder structure, schema files, and Alexandria config. Creates: raw/assets/, wiki/, index.md, log.md, CLAUDE.md + AGENT.md (identical schema for cross-platform compatibility), and .alexandria.json. Call this once when setting up a new wiki.",
+      "Initialize a brand-new wiki for the user. Call this ONLY when the user explicitly says they want to create, set up, or start a new wiki — never auto-trigger and never use it on an existing wiki. Asks for path, name, and purpose, then creates the folder structure (raw/assets/, wiki/), schema files (CLAUDE.md + AGENTS.md), index.md, log.md, .alexandria.json (at both wiki root and ~/.alexandria.json), and an initial empty search index so day-one queries work.",
     inputSchema: {
       type: "object",
       properties: {
@@ -168,7 +172,7 @@ export function createScaffoldTool() {
       const purpose = args.purpose || "Personal knowledge base";
 
       if (existsSync(path)) {
-        const files = ["index.md", "log.md", "CLAUDE.md", "AGENT.md", ".alexandria.json"];
+        const files = ["index.md", "log.md", "CLAUDE.md", "AGENTS.md", ".alexandria.json"];
         const hasWikiContent = files.some((f) => existsSync(join(path, f)));
 
         if (hasWikiContent) {
@@ -191,7 +195,7 @@ export function createScaffoldTool() {
 
       const claudeContent = generateCLAUDEMD(name, purpose);
       writeFileSync(join(path, "CLAUDE.md"), claudeContent, "utf-8");
-      writeFileSync(join(path, "AGENT.md"), claudeContent, "utf-8");
+      writeFileSync(join(path, "AGENTS.md"), claudeContent, "utf-8");
 
       const indexContent = generateIndexMD();
       writeFileSync(join(path, "index.md"), indexContent, "utf-8");

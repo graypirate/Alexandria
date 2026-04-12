@@ -87,7 +87,7 @@ export function createDetectNewTool() {
   return {
     name: "detect_new",
     description:
-      "Detect unprocessed files in the wiki's raw/ directory. Returns list of new files not yet referenced by any wiki page's sources field, plus list of already-processed files. Use this before wiki-ingest to see what new sources need processing.",
+      "List source files in the wiki's raw/ directory that have not yet been ingested into any wiki page. Call this when the user says they've added new sources, dropped files, or wants to know what's pending — and as the first step of any ingest workflow. Returns the new files (with path, name, type, size, frontmatter if present) plus the already-processed files for reference. Read each new file before discussing or filing it.",
     inputSchema: {
       type: "object",
       properties: {

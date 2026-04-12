@@ -11,7 +11,7 @@ Retrieves wiki pages relevant to the current message using BM25 + PageRank searc
 
 ## Trigger
 
-- **Auto (session start)**: Fires on the first user message of a session. The host agent auto-invokes this before responding.
+- **Session start**: If the host respects Alexandria's MCP `instructions` field or loads the project `AGENTS.md`, use this before answering the first wiki-relevant message of the session.
 - **On-demand**: User or LLM calls `/wiki <query>` mid-session to retrieve context on a new topic.
 
 ## Flow

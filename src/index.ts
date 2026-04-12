@@ -11,6 +11,8 @@ import { createIndexBuildTool } from "./tools/index-build.js";
 import { createLintStructuralTool } from "./tools/lint-structural.js";
 import { createScaffoldTool } from "./tools/scaffold.js";
 import { createDetectNewTool } from "./tools/detect-new.js";
+import { createExtractSessionTool } from "./tools/extract-session.js";
+import { findAlexandriaConfig, loadBundledPrompt } from "./utils.js";
 
 const tools = [
   createSearchTool(),
@@ -18,7 +20,14 @@ const tools = [
   createLintStructuralTool(),
   createScaffoldTool(),
   createDetectNewTool(),
+  createExtractSessionTool(),
 ];
+
+const configuredWikiPath = findAlexandriaConfig()?.wikiPath || "<WIKI_PATH>";
+const sessionStartInstructions = loadBundledPrompt("session-start.md").replaceAll(
+  "[WIKI_PATH]",
+  configuredWikiPath
+);
 
 const server = new Server(
   {
@@ -29,6 +38,7 @@ const server = new Server(
     capabilities: {
       tools: {},
     },
+    instructions: sessionStartInstructions,
   }
 );
 

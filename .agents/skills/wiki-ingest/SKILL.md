@@ -136,3 +136,4 @@ LLM appends to `log.md`:
 - One source can feed multiple wiki pages (e.g., one article about context + another about agents)
 - Tags are the primary cross-cutting mechanism — use them liberally
 - The LLM should proactively link to related pages, not just create isolated pages
+- If the ingest surfaced durable session-level conclusions beyond the source material itself, use `extract_session` later to preserve them cleanly.

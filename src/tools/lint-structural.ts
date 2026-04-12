@@ -248,7 +248,7 @@ export function createLintStructuralTool() {
   return {
     name: "lint_structural",
     description:
-      "Check wiki health: orphan pages (no inbound links), broken wikilinks, missing frontmatter, pages not in index, stale pages (>30 days old), and unlinked raw sources. Returns structured report of all issues found.",
+      "Run a structural health check on the user's wiki. Call this when the user asks to lint, audit, clean up, or check the wiki — or when you suspect drift after many changes. Reports orphan pages (no inbound wikilinks), broken wikilinks, missing required frontmatter, pages absent from index.md, stale pages (default >30 days), and raw/ files not referenced by any wiki page. Zero token cost — pure file-system logic. After reviewing the report, propose fixes to the user, apply approved ones, then call index_build to refresh the search index.",
     inputSchema: {
       type: "object",
       properties: {

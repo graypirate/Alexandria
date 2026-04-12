@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { AlexandriaConfig } from "./types.js";
 
 const HOME = process.env.HOME || "";
@@ -40,4 +41,21 @@ export function getWikiPath(providedPath?: string): string {
   if (config?.wikiPath) return config.wikiPath;
 
   return process.cwd();
+}
+
+export function extractPrompt(md: string): string {
+  const withoutFrontmatter = md.replace(/^---[\s\S]*?---\n/, "");
+  const fenceMatch = withoutFrontmatter.match(/```[\s\S]*?\n([\s\S]*?)```/);
+  return (fenceMatch ? fenceMatch[1] : withoutFrontmatter).trim();
+}
+
+export function loadBundledPrompt(filename: string): string {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const promptPath = resolve(here, "..", "prompts", filename);
+    const md = readFileSync(promptPath, "utf-8");
+    return extractPrompt(md);
+  } catch {
+    return "";
+  }
 }

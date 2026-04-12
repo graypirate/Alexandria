@@ -39,7 +39,7 @@ I'll create a wiki called "[Name]" at [path] with the following structure:
 - wiki/ (wiki pages)
 - index.md
 - log.md
-- [AGENT/CLAUDE].md (Alexandria schema)
+- [AGENTS/CLAUDE].md (Alexandria schema)
 
 Ready to proceed? (yes/no)
 ```
@@ -56,12 +56,13 @@ wiki-root/
 ├── wiki/
 ├── index.md
 ├── log.md
-└── [AGENT/CLAUDE].md
+├── CLAUDE.md
+└── AGENTS.md
 ```
 
 ### 4. Schema Generation (LLM + Tool)
 
-LLM generates the `[AGENT/CLAUDE].md` schema tailored to the user's answers, then writes it via the host agent's file write capability.
+LLM generates the `CLAUDE.md` / `AGENTS.md` schema tailored to the user's answers, then writes it via the host agent's file write capability.
 
 Schema includes:
 - Folder structure documentation
@@ -92,20 +93,18 @@ Tool creates `.alexandria.json` in the wiki root:
 
 Note: Focus folders (like `wiki/agents/`) are created later, as topics emerge and grow deep enough to warrant their own folder. They are lightweight organizational aids, not a rigid structure.
 
-### 7. Hook Installation (if host supports it)
+### 7. Awareness and Extraction
 
-If the host agent supports hook configuration, the LLM configures:
-- Session start hook → injects awareness prompt
-- Session end hook → injects conversation extraction prompt
-
-This step is host-dependent and may need manual configuration.
+- Session-start awareness comes from Alexandria's MCP `instructions` field.
+- If the host does not surface those instructions reliably, add the template from `templates/AGENTS.md.example` to the project.
+- End-of-session filing is available manually through the `extract_session` MCP tool.
 
 ## Output Format
 
 ```
 ✓ Wiki "[Name]" initialized at [path]
 ✓ Folder structure created
-✓ Schema written to [AGENT/CLAUDE].md
+✓ Schema written to CLAUDE.md and AGENTS.md
 ✓ Index and log created
 ✓ Alexandria config written to .alexandria.json
 
@@ -119,4 +118,4 @@ Next steps:
 
 - **Directory not empty**: Ask user to confirm overwrite or choose different path
 - **Permission denied**: Report error with the specific path that failed
-- **Host doesn't support hooks**: Inform user that hook installation is manual and provide instructions
+- **Host doesn't surface MCP instructions**: Tell the user to add the AGENTS template manually

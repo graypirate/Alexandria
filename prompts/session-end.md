@@ -1,12 +1,12 @@
 ---
 name: session-end
-description: Extracts durable knowledge from conversation at session close
-timing: on session end
+description: Extracts durable knowledge from a conversation into the wiki
+timing: session close or manual
 ---
 
-# Hook: Session End — Conversation Extraction
+# Prompt: Session End — Conversation Extraction
 
-Fires when the session is closing. The fenced block below is what the hook injects, prompting the agent to extract durable knowledge from the conversation and file it into the wiki before the context is lost. Length is acceptable here — this fires once per session, not per turn.
+Use this when the session is closing or when the user explicitly asks to preserve what happened in the conversation. The fenced block below is the filing prompt Alexandria can return through the `extract_session` MCP tool. Length is acceptable here — this runs occasionally, not every turn.
 
 ```
 # Alexandria — Session End

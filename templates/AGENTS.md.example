@@ -1,0 +1,22 @@
+# Wiki context (Alexandria)
+
+This project has a persistent wiki knowledge base managed by [Alexandria](https://github.com/graypirate/Alexandria) at `<WIKI_PATH>`. The wiki is the source of truth for ideas, projects, concepts, decisions, and research that should persist across sessions. Built-in conversation memory is for the user (preferences, traits) — keep them separate.
+
+## Defaults
+
+Default to the wiki when the conversation touches ideas, projects, or prior work. Read it via the `search` MCP tool. Write to it (via `wiki-ingest` and `index_build`) when something durable surfaces.
+
+- User opens with a reference to past work → call `search` immediately, read the top hits.
+- Conversation drifts into a wiki-relevant topic mid-session → search the wiki in parallel while you keep responding.
+- New exploratory ideas with no wiki footprint → just talk. Search is leverage, not a tax.
+
+Don't announce searches — integrate the knowledge naturally. See `<WIKI_PATH>/CLAUDE.md` for the wiki schema and conventions.
+
+## Available MCP tools (from Alexandria)
+
+- `search` — BM25 + PageRank query over the wiki. Default entry point.
+- `index_build` — rebuild the search index after writing pages.
+- `lint_structural` — find orphans, broken wikilinks, stale pages.
+- `detect_new` — list files in `raw/` that haven't been ingested.
+- `extract_session` — return the end-of-session filing prompt for preserving durable work.
+- `scaffold` — create a new wiki (only on explicit user request).
